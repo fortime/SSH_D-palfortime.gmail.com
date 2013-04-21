@@ -1,4 +1,24 @@
 #! /bin/bash 
+##
+# Author: 
+# fortime <palfortime@gmail.com>
+#
+# License:
+# This file is part of SSH_D-palfortime.gmail.com(SSH_D for short in the following).
+# 
+# SSH_D is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# SSH_D is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with SSH_D.  If not, see <http://www.gnu.org/licenses/>.
+##
 
 function set_value_to
 {
@@ -124,6 +144,10 @@ cur_pid=$$
 
 case "$run_mode" in
     "daemon")
+        echo here
+        read password
+        echo $password
+        echo here1
         {
             flock -n -e 3
             [ $? -eq 1 ] && { echo failed, one process one time!; exit 1; }
@@ -133,7 +157,6 @@ case "$run_mode" in
             do
                 (( count=count+1 ))
                 [ $count -gt 10 ] && exit
-                password=123456
                 "$script_file" -m"client" -f"$pid_file" -D"$relay_address" -h"$host" -p"$port" -u"$user" <<EOF
 $password
 EOF
@@ -168,11 +191,23 @@ EOF
             result=`grep '^'"$target_pid"'$' "$pid_file"`
             [ -n "$result" ] && [ `wc -l "$pid_file" | cut -d" " -f1` -eq 1 ] && rm "$pid_file" 
         else
+            [ ! -e "$pid_file" ] && exit
             while read line
             do
                 kill_proc_tree "$line"
             done <"$pid_file"
             rm "$pid_file"
         fi
+        ;;
+    "prober")
+        # check if there is any daemon running with pid_file existed.
+        {
+            flock -n -e 3 
+            if [ $? -eq 1 ]
+            then
+                #send a dbus message.
+                test 1 -eq 1
+            fi
+        } 3<"$pid_file"
         ;;
 esac

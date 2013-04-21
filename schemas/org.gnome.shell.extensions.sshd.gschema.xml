@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="gnome-shell-extensions-ssh_d">
+  <schema path="/org/gnome/shell/extensions/ssh_d/" id="org.gnome.shell.extensions.ssh_d">
+    <key type="s" name="user">
+        <default>""</default>
+        <summary>Username</summary>
+        <description>Username</description>
+    </key>
+    <key type="s" name="remote-host">
+        <default>""</default>
+        <summary>RemoteHost</summary>
+        <description>RemoteHost</description>
+    </key>
+    <key type="i" name="remote-port">
+        <default>21</default>
+        <summary>RemotePort</summary>
+        <description>RemotePort</description>
+    </key>
+    <key type="s" name="local-host">
+        <default>"127.0.0.1"</default>
+        <summary>LocalHost</summary>
+        <description>LocalHost</description>
+    </key>
+    <key type="i" name="local-port">
+        <default>7070</default>
+        <summary>LocalPort</summary>
+        <description>LocalPort</description>
+    </key>
+    <key type="s" name="pid-file-path">
+        <default>"/tmp/sshdd.pid"</default>
+        <summary>PidFilePath</summary>
+        <description>PidFilePath</description>
+    </key>
+  </schema>
+</schemalist>

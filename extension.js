@@ -1,3 +1,26 @@
+// -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
+/*
+ * Author: 
+ * fortime <palfortime@gmail.com>
+ *
+ * License:
+ * This file is part of SSH_D-palfortime.gmail.com(SSH_D for short in the following).
+ * 
+ * SSH_D is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * SSH_D is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with SSH_D.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ */
+
 const GLib = imports.gi.GLib;
 const Gdk = imports.gi.Gdk;
 const Gio = imports.gi.Gio;
@@ -13,43 +36,11 @@ const MessageTray = imports.ui.messageTray;
 const Tweener = imports.ui.tweener;
 
 const ThisExtension = ExtensionUtils.getCurrentExtension();
+const Logger = ThisExtension.imports.logger;
+const Prompter = ThisExtension.imports.prompter;
+const Prefs = ThisExtension.imports.prefs;
 
-Logger.prototype = {
-    _init: function() {
-        this._levelMap = {
-                'test' : 1,
-                'debug' : 2, 
-                'warn' : 3, 
-                'error' : 4};
-    },
-    _logLevel: 1,
-    changeLogLevel: function(targetLevel) {
-        this._logLevel = targetLevel;
-    },
-    debug: function(msg) {
-        this.log_('debug', msg);
-    },
-    error: function(msg) {
-        this.log_('error', msg);
-    },
-    log_: function(type, msg) {
-        let typeLevel = this._levelMap[type];
-        if (typeLevel >= this._logLevel)
-            log(type + ": " + msg);
-    },
-    test: function(msg) {
-        this.log_('test', msg);
-    },
-    warn: function(msg) {
-        this.log_('warn', msg);
-    }
-}
-
-function Logger() {
-    this._init();
-}
-
-let logger = new Logger();
+let logger = new Logger.Logger();
 logger.changeLogLevel(1);
 
 SSHDProxyIndicator.prototype = {
@@ -74,39 +65,64 @@ SSHDProxyIndicator.prototype = {
         this._sshdToggle = new PopupMenu.PopupSwitchMenuItem(_('SSHD'));
         this._sshdToggle.connect('toggled', Lang.bind(this, this._handleSSHDToggle));
         this.menu.addMenuItem(this._sshdToggle);
+        this._gsettings = Prefs.getSettings();
     },
 
     _handleSSHDToggle: function(actor, event) {
         let msg = '';
-        let handleFunction;
+        let handleFunction = null;
+        if (prompt == null) {
+            prompt = new Prompter.PasswdPrompt(this, this._onGetPasswd);
+            logger.debug(prompt);
+        }
         if (event) {
             msg = 'Connecting';
-            handleFunction = this.connectSSHDProxy;
+            prompt.open();
         } 
         else {
             msg = 'Disconnecting';
             handleFunction = this.disconnectSSHDProxy;
         }
         this.sendNotification(msg);
-        handleFunction();
+        if (handleFunction != null)
+            handleFunction();
     },
 
-    connectSSHDProxy: function() {
+    _onGetPasswd: function(object, passwd) {
+        if (passwd != null && passwd != '')
+            object.connectSSHDProxy(passwd);
+        else
+            object._sshdToggle.toggle();
+    },
+
+    connectSSHDProxy: function(passwd) {
         logger.debug('doing connection');
         this._runningMode = 'daemon';
-        this._pidFile = '/tmp/sshdd.pid';
-        this._relayAddress = '127.0.0.1:7221';
-        this._host = '127.0.0.1';
-        this._port = '8888';
-        this._user = 'f_public';
+        this._pidFile = this._gsettings.get_string(Prefs.PID_FILE_PATH_KEYNAME);
+        this._localHost = this._gsettings.get_string(Prefs.LOCAL_HOST_KEYNAME);
+        this._localPort = this._gsettings.get_int(Prefs.LOCAL_PORT_KEYNAME);
+        this._relayAddress = this._localHost + ':' + this._localPort;
+        this._remoteHost = this._gsettings.get_string(Prefs.REMOTE_HOST_KEYNAME);
+        this._remotePort = this._gsettings.get_int(Prefs.REMOTE_PORT_KEYNAME);
+        this._user = this._gsettings.get_string(Prefs.USER_KEYNAME);
         let scriptsPath = ThisExtension.dir.get_child('scripts').get_path();
-        Util.spawn([scriptsPath + '/sshdd.sh',
-                '-m' + this._runningMode,
-                '-f' + this._pidFile,
-                '-D' + this._relayAddress,
-                '-h' + this._host,
-                '-p' + this._port,
-                '-u' + this._user]);
+        /*
+        let [res, pid, inFD, outFD, errFD] = GLib.spawn_async_with_pipes(null, ['/tmp/test.sh'], null, 0, null); 
+        */
+        let [res, pid, inFD, outFD, errFD] = GLib.spawn_async_with_pipes(null, 
+                [scriptsPath + '/sshdd.sh',
+                    '-m' + this._runningMode,
+                    '-f' + this._pidFile,
+                    '-D' + this._relayAddress,
+                    '-h' + this._remoteHost,
+                    '-p' + this._remotePort,
+                    '-u' + this._user],
+                null, 0, null);
+        let writer = new Gio.DataOutputStream({
+            base_stream: new Gio.UnixOutputStream({fd: inFD})
+        });
+        let data = [passwd, ""].join("\n");
+        writer.put_string(data, null);
     },
 
     disconnectSSHDProxy: function() {
@@ -138,6 +154,8 @@ function init() {
 }
 
 let indicator;
+let prompt = null;
+let prompter = null;
 
 function enable() {
     indicator = new SSHDProxyIndicator(); 
@@ -148,4 +166,5 @@ function enable() {
 function disable() {
     //Main.panel._rightBox.remove_child(button);
     indicator.destroy();
+    //prompter.disable();
 }
