@@ -1,13 +1,19 @@
-SSH_D-palfortime.gmail.com
+##SSH_D-palfortime.gmail.com
 ==========================
 
 To use "ssh -D" proxy
+
 ----
-## INSTALL
+
+### INSTALL
+
 git clone https://github.com/fortime/SSH_D-palfortime.gmail.com.git
 cp -r SSH_D-palfortime.gmail.com ~/.local/share/gnome-shell/extensions/
+
 ----
-## LICENSE
+
+### LICENSE
+
 This file is part of SSH_D-palfortime.gmail.com(SSH_D for short in the following).
 
 SSH_D is free software: you can redistribute it and/or modify
